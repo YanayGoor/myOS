@@ -263,7 +263,17 @@ u32 EXT2_read_inode_data(u32 device_id, EXT2_superblock_t *superblock, u32 inode
     return buff;
 }
 
+u64 _EXT2_get_inode_content_size(EXT2_superblock_t *superblock, EXT2_inode_t *inode) {
+    u64 curr_size = inode->sizel;
+    if (superblock->version_major >= 1) curr_size += inode->version_specific2.sizeh << 32;
+    return curr_size;
+}
+
 u32 _EXT2_append_blocks_to_inode_data(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 starting_block, u32 size) {
+    EXT2_inode_t *inode = EXT2_read_inode(device_id, superblock, inode_i);
+    u32 content_size_in_sectors = _EXT2_get_inode_content_size(superblock, inode) / 512;
+    // _EXT2_write_inode_blocks(device_id, superblock, inode_i, content_size_in_sectors)
+    
     //TODO: implement
 }
 
