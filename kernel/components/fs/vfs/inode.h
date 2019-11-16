@@ -33,8 +33,9 @@
 //     VFS_write_t write;
 //     VFS_open_t open;
 //     VFS_close_t close;
+//     VFS_create_t create // create child of directory
 //     VFS_readdir_t readdir; // Returns the n'th child of a directory.
-//     VFS_finddir_t finddir; // Try to find a child in a directory by name.
+//     VFS_lookup_t lookup; // Try to find a child in a directory by name.
 //     // status
 //     u32 count;
 //     u32 lock;

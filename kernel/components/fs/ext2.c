@@ -443,6 +443,63 @@ u32 EXT2_write_inode_data(u32 device_id, EXT2_superblock_t *superblock, u32 inod
     return storage_write_scatter(device_id, storage_nodes, buffer);
 }
 
+EXT2_dir_entry_t *EXT2_lookup(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, char* name) {
+    // TODO: dont read the whole inode data at the same time 
+    EXT2_inode_t *inode = EXT2_read_inode(device_id, superblock, inode_i);
+    u32 inode_data_size_in_sectors = _EXT2_get_inode_content_size(superblock, inode) / 512;
+    u8 *dir_entries = EXT2_read_inode_data(device_id, superblock, inode_i, 0, inode_data_size_in_sectors);
+    EXT2_dir_entry_t *curr = (EXT2_dir_entry_t *)dir_entries;
+    while ((u32)curr < (u32)dir_entries + (inode_data_size_in_sectors * 512)) {
+        u32 name_length = curr->name_lengthl;
+        if (!superblock->version_major) name_length += curr->feature_specific.name_lengthh;
+        u32 i;
+        u32 query_length = 0;
+        while (!name[query_length]) query_length++;
+        
+        for (i = 0; i < name_length; i++) {
+            if (curr->name[i] == name[i]) {
+                break;
+            }
+        }
+        if (i == name_length - 1 && name_length == query_length) {
+            EXT2_dir_entry_t *result = malloc(sizeof(EXT2_dir_entry_t) + name_length - 1);
+            memory_copy(curr, result, sizeof(EXT2_dir_entry_t) + name_length - 1);
+            free(inode);
+            free(dir_entries);
+            return curr;
+        }
+        curr = (u8 *)(curr + 1) + name_length - 1;
+    }
+    return 0;
+}
+
+EXT2_dir_entry_t *EXT2_readdir(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 index) {
+    // TODO: dont read the whole inode data at the same time 
+    EXT2_inode_t *inode = EXT2_read_inode(device_id, superblock, inode_i);
+    u32 inode_data_size_in_sectors = _EXT2_get_inode_content_size(superblock, inode) / 512;
+    u8 *dir_entries = EXT2_read_inode_data(device_id, superblock, inode_i, 0, inode_data_size_in_sectors);
+    EXT2_dir_entry_t *curr = (EXT2_dir_entry_t *)dir_entries;
+    int i = 0;
+    while ((u32)curr < (u32)dir_entries + (inode_data_size_in_sectors * 512)) {
+        u32 name_length = curr->name_lengthl;
+        if (!superblock->version_major) name_length += curr->feature_specific.name_lengthh;
+        if (i == index) {
+            EXT2_dir_entry_t *result = malloc(sizeof(EXT2_dir_entry_t) + name_length - 1);
+            memory_copy(curr, result, sizeof(EXT2_dir_entry_t) + name_length - 1);
+            free(inode);
+            free(dir_entries);
+            return curr;
+        }
+        curr = (u8 *)(curr + 1) + name_length - 1;
+        i++;
+    }
+    return 0;
+}
+
+EXT2_inode_t *EXT2_create(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, char* name) {
+    
+}
+
 u32 _EXT2_alloc_inode_in_group(u32 device_id, EXT2_superblock_t *superblock, u32 group) {
     EXT2_block_group_descriptor_t *groups = _EXT2_read_group_descriptors(device_id, superblock);
     u8 *bitmap = (u32 *)_EXT2_read_block(device_id, superblock, groups[group].inode_usage_bitmap_baddr);

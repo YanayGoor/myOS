@@ -4,16 +4,6 @@
 
 // #ifndef MYOS_SUPERBLOCK_H
 
-// //VFS_read_super_t
-// //VFS_create_t
-// //VFS_remove_t
-// //VFS_read_t
-// //VFS_write_t
-// //VFS_open_t
-// //VFS_close_t
-// //VFS_readdir_t
-// //VFS_finddir_t
-
 // struct VFS_fs_t{
 //     VFS_read_super_t read_super;
 //     u8 name[255];
@@ -26,8 +16,8 @@
 //     VFS_fs_t type;
 //     VFS_inode_t *mounted; // the mounted root inode
 //     VFS_inode_t *covered; // the inode the superblock is covering
-//     VFS_create_t create; // create files
-//     VFS_remove_t remove; // remove files
+////     VFS_create_t create; // create inode
+////     VFS_remove_t remove; // remove inode
 //     void *fs_specific;
 // } VFS_superblock_t;
 
