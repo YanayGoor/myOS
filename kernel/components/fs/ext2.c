@@ -468,7 +468,9 @@ EXT2_dir_entry_t *EXT2_lookup(u32 device_id, EXT2_superblock_t *superblock, u32 
             free(dir_entries);
             return curr;
         }
-        curr = (u8 *)(curr + 1) + name_length - 1;
+        if(!curr->inode && !curr->name_lengthl && curr->feature_specific.type == EXT2_dir_type_unknown) return 0;
+        
+        curr = (u8 *)(curr) + curr->entry_size;
     }
     return 0;
 }
@@ -490,7 +492,9 @@ EXT2_dir_entry_t *EXT2_readdir(u32 device_id, EXT2_superblock_t *superblock, u32
             free(dir_entries);
             return curr;
         }
-        curr = (u8 *)(curr + 1) + name_length - 1;
+        if(!curr->inode && !curr->name_lengthl && curr->feature_specific.type == EXT2_dir_type_unknown) return 0;
+
+        curr = (u8 *)(curr) + curr->entry_size;
         i++;
     }
     return 0;

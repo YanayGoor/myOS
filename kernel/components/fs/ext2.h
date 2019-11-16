@@ -43,6 +43,7 @@
 #define EXT2_inode_type_symlink 0xa
 #define EXT2_inode_type_socket 0xc
 
+#define EXT2_dir_type_unknown 0
 #define EXT2_dir_type_regular 1
 #define EXT2_dir_type_dir 2
 #define EXT2_dir_type_block_device 3
