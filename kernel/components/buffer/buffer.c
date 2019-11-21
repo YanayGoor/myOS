@@ -87,11 +87,18 @@ void _BFR_free_from_freelist(cache_t *cache, u32 amount) {
 
 }
 
+buffer_header_t *_BFR_get_from_cache(cache_t *cache, u32 device_id, u32 buffer_id) {
+    buffer_header_t *buffer_header = _BFR_get_from_hashtable(cache, device_id, buffer_id);
+    if (!buffer_header->used) {
+        remove(&buffer_header->linked_list_node);
+        cache->used_count++;
+        cache->free_count--;
+    }
+    buffer_header->used++;
+    return buffer_header;
+}
 
-
-buffer_header_t *_BFR_get_buffer(cache_t *cache, u32 device_id, u32 buffer_id);
-
-void _BFR_free_buffer(cache_t *cache, buffer_header_t *buffer_header) {
+void _BFR_free_from_cache(cache_t *cache, buffer_header_t *buffer_header) {
     buffer_header->used--;
     if (!buffer_header->used) {
         _BFR_insert_to_freelist(cache, buffer_header);
@@ -99,3 +106,15 @@ void _BFR_free_buffer(cache_t *cache, buffer_header_t *buffer_header) {
     cache->used_count--;
     cache->free_count++;
 }
+
+void _BFR_insert_to_cache(cache_t *cache, buffer_header_t *buffer_header) {
+    buffer_header->used++;    
+    cache->used_count++;
+    _BFR_insert_to_hashtable(cache, buffer_header);
+    // free from cache
+    if (cache->used_count + cache->free_count > cache->size) {
+        _BFR_free_from_freelist(cache, cache->size - cache->used_count - cache->free_count);
+    }
+}
+
+void _BFR_print_cache_description() {}
