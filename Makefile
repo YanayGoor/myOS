@@ -2,8 +2,8 @@
 # $< = first dependency
 # $^ = all dependencies
 
-C_SOURCES = $(wildcard kernel/*.c kernel/*/*.c drivers/*.c drivers/*/*.c cpu/*.c)
-HEADERS = $(wildcard kernel/*.h kernel/*/*.h drivers/*.h drivers/*/*.h cpu/*.h)
+C_SOURCES = $(wildcard kernel/*.c kernel/*/*.c kernel/*/*/*.c drivers/*.c drivers/*/*.c cpu/*.c)
+HEADERS = $(wildcard kernel/*.h kernel/*/*.h kernel/*/*/*.h drivers/*.h drivers/*/*.h cpu/*.h)
 
 OBJ = ${C_SOURCES:.c=.o cpu/interrupt.o}
 

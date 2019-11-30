@@ -32,5 +32,6 @@ typedef struct {
 
 // read from buffer cache
 // write to buffer cache
+void _BFR_print_cache_description(cache_t *cache);
 
 #endif

@@ -68,3 +68,9 @@ void print_uint(unsigned int i) {
     kprint(str);
     kprint("\n");
 }
+
+void print_uint_inline(unsigned int i) {
+    char str[255];
+    uint_to_ascii(i, str);
+    kprint(str);
+}

@@ -167,7 +167,7 @@ u32 remove_from_bin(node_t *node) {
 }
 
 chunk_header_t *merge_with_neighbours(chunk_header_t *chunk) {
-    chunk_header_t *next_chunk = ((u32)chunk + PRESENT_HEADER_SIZE + chunk->size + sizeof(chunk_footer_t));
+    chunk_header_t *next_chunk = (chunk_header_t *)((u32)chunk + PRESENT_HEADER_SIZE + chunk->size + sizeof(chunk_footer_t));
     int blocked = 1;
     if (next_chunk && !next_chunk->present && (u32)next_chunk < heap_start + heap_size) {
         chunk->size += next_chunk->size + PRESENT_HEADER_SIZE + sizeof(chunk_footer_t);

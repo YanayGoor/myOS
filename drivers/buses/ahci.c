@@ -58,17 +58,17 @@ void init_port(AHCI_HBA_port_t *port) {
     u32 port_addr = malloc_a(1024 + 256 + (256 * 32));
 
     port->cmd_list_base_addr.addr = port_addr;
-    memory_set(port->cmd_list_base_addr.addr, 0, 1024);
+    memory_set((char *)port->cmd_list_base_addr.addr, 0, 1024);
 
     port->FIS_base_addr.addr = port_addr + 1024;
-    memory_set(port->FIS_base_addr.addr, 0, 256);
+    memory_set((char *)port->FIS_base_addr.addr, 0, 256);
 
     AHCI_cmd_header_t *cmd_header = (AHCI_cmd_header_t *)port->cmd_list_base_addr.addr;
     int i;
     for (i = 0; i<32; i++) {
         cmd_header[i].prdt_length = 8;
         cmd_header[i].cmd_table_base_addr.addr = port_addr + 1024 + 256 + (256 * i);
-        memory_set(cmd_header[i].cmd_table_base_addr.addr, 0, 256);
+        memory_set((char *)cmd_header[i].cmd_table_base_addr.addr, 0, 256);
     }
 
     kprint("initialized port at memory addr ");
@@ -145,11 +145,13 @@ u8 AHCI_issue_dma_scatter_gather_cmd(u32 cmd, AHCI_HBA_port_t *port, storage_vec
     // TODO: use virtual to physical converter function
     port->interrupt_status = -1;
     storage_vector_node_t *curr;
-    curr->node.next = nodes;
+    // we can only do this cast because the node is the first member of the struct
+    curr->node.next = (node_t *)nodes; 
     u32 buffer_offset = 0;
     u32 slots = 0;
     while (curr->node.next) {
-        curr = curr->node.next;
+        // we can only do this cast because the node is the first member of the struct
+        curr = (storage_vector_node_t *)curr->node.next; 
         buffer_offset += curr->length * 512;
         u8 free_slot = find_free_slot(port);
         if (free_slot == (u8)-1) return -1;
