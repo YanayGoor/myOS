@@ -19,6 +19,20 @@
 
 #define TIMER_HZ 1193180
 
-void init_timer(u32 freq);
+void init_timer();
+
+typedef void (timer_callback_t)();
+
+typedef struct {
+    u32 execute_time;
+    u32 time_interval;
+    u32 repeat;
+    u32 cleared;
+    timer_callback_t *callback;  
+} timer_callback_node_t;
+
+timer_callback_node_t *set_callback(timer_callback_t *callback, u32 msec, u8 repeat) {
+void clear_callback(timer_callback_node_t *callback_node) {
+
 
 #endif

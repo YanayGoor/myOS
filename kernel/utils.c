@@ -1,3 +1,5 @@
+#include "../cpu/types.h"
+
 void memory_copy(char *source, char *dest, int nbytes) {
     int i;
     for (i=0; i<nbytes; i++) {
@@ -73,4 +75,19 @@ void print_uint_inline(unsigned int i) {
     char str[255];
     uint_to_ascii(i, str);
     kprint(str);
+}
+
+/**
+ * adler32 hash algorithem
+ */
+u32 hash(u8 *buffer, u32 length) {
+    u32 s1 = 1;
+    u32 s2 = 0;
+
+    u32 i;
+    for (i = 0; i < length; i++) {
+        s1 = (s1 + buffer[i]) % 65521;
+        s1 = (s2 + s1) % 65521;
+    }
+    return (s2 << 16) | s1;
 }

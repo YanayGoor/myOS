@@ -3,6 +3,7 @@
 #include "../../kernel/utils.h"
 #include "../../cpu/isr.h"
 #include "../../kernel/libc/linked_list.h"
+#include "../../kernel/libc/hashtable.h"
 #include "pit.h"
 
 u32 timer_tick = 0;
@@ -25,37 +26,61 @@ static void timer_interrupt_handler(registers_t r) {
         kprint(tick_ascii);
         set_offset(offset);
     }
+
+    timer_callback_node_t *curr = get_from_hashtable(callback_hashtable, timer_tick);
+    while(curr) {
+        _execute_callback(curr);
+        curr = get_from_hashtable(callback_hashtable, timer_tick);
+    }
 }
 
-// TODO: this solution is for small amounts of callbacks at a time, 
-// make all this based on a hashtable based on the next tick to execute on to reduce the logic complexity in the isr to O(1)
-
-typedef void (timer_callback_t)();
-
-typedef struct {
-    node_t node;
-    u32 id;
-    u32 time_offset;
-    u32 time_interval;
-    u32 repeat;
-    timer_callback_t *callback;  
-} timer_callback_node_t;
-
-timer_callback_node_t *callback_hashtable = 0;
+hashtable_t *callback_hashtable = 0;
 u32 latest_callback_id = 1;
 
 timer_callback_node_t *set_callback(timer_callback_t *callback, u32 msec, u8 repeat) {
+    timer_callback_node_t *node = malloc(sizeof(timer_callback_node_t));
+    memory_set((char *)&node, 0, sizeof(timer_callback_node_t));
+    node->execute_time = timer_tick + msec;
+    node->time_interval = msec;
+    node->repeat = repeat;
+    node->callback = callback;
+    insert_to_hashtable(callback_hashtable, node->execute_time, node);
+    return node;
 }
 
 void clear_callback(timer_callback_node_t *callback_node) {
-
+    // since we can't remove from the hashtable by value, only by key. and there might be duplicates of the key
+    callback_node->cleared = 1;
 }
 
-void execute_callback(timer_callback_node_t *callback_node) {
+void _execute_callback(timer_callback_node_t *callback_node) {
+    // we can remove by key here since the code calling this is will always get the first match for the key
+    if (!callback_node->cleared) {
+        callback_node->callback();
+        if (callback_node->repeat) {
+            remove_from_hashtable(callback_hashtable, callback_node->execute_time);
+            callback_node->execute_time += callback_node->time_interval;
+            insert_to_hashtable(callback_hashtable, callback_node->execute_time, callback_node);
+        } else {
+            remove_from_hashtable(callback_hashtable, callback_node->execute_time); 
+        }
+    } else {
+        remove_from_hashtable(callback_hashtable, callback_node->execute_time);
+    }
+        
+}
 
+u8 callback_is_match(void *key, void *entry) {
+    return (u32)key == ((timer_callback_node_t *)entry)->execute_time;
+}
+
+u8 callback_hash_key(void *key) {
+    return hash(key, 4);
 }
 
 void init_timer() {
+    callback_hashtable = create_hashtable(100, callback_is_match, callback_hash_key);
+
     register_interrupt_handler(IRQ0, timer_interrupt_handler);
 
     u16 divider = (u16)(TIMER_HZ / freq);

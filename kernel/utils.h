@@ -10,4 +10,6 @@ void uint_to_ascii(unsigned int n, char str[]);
 int strlen(char str[]);
 void print_int(int a);
 void print_uint(unsigned int a);
+
+u32 hash(u8 *buffer, u32 length);
 #endif
