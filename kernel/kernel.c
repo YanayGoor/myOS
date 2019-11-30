@@ -5,6 +5,7 @@
 #include "../drivers/buses/ahci.h"
 #include "libc/memory.h"
 #include "utils.h"
+#include "components/buffer/buffer.h"
 #include "components/paging.h"
 #include "components/storage.h"
 
@@ -22,7 +23,7 @@ void main() {
     kprint("initialized isrs\n");
 
 
-    init_timer(100);
+    init_timer();
     kprint("initialized timer\n");
 
 
@@ -97,6 +98,39 @@ void main() {
     storage_read(0, 0, 1, (u32)buff);
 
     print_uint(*buff);
+
+    cache_t *cache = (cache_t *)malloc(sizeof(cache_t) + (sizeof(u32) * 100));
+    memory_set((char *)cache, 0, sizeof(cache_t) + (sizeof(u32) * 100));
+    cache->size = 100;
+    
+    _BFR_print_cache_description(cache);
+
+    buffer_header_t buffer_header;
+    memory_set(&buffer_header, 0, sizeof(buffer_header_t));
+    buffer_header.buffer_id = 5;
+
+    _BFR_insert_to_cache(cache, &buffer_header);
+
+    kprint("\n");
+    kprint("\n");
+
+    _BFR_print_cache_description(cache);
+
+    kprint("\n");
+
+    _BFR_print_buffer_header(_BFR_get_from_cache(cache, 0, 5));
+
+    kprint("\n");
+    kprint("\n");
+
+    _BFR_print_cache_description(cache);
+
+    kprint("\n");
+    kprint("\n");
+
+    _BFR_free_from_cache(cache, &buffer_header);
+
+    _BFR_print_cache_description(cache);
 
     while(1) {}
 
