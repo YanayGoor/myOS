@@ -49,6 +49,7 @@ void remove_from_hashtable(hashtable_t *hashtable, void *key) {
         u32 hash_result = hashtable->hash(key);
         hashtable->entries[hash_result % hashtable->size] = 0;
     }
+    free(result);
 }
 
 hashtable_t *create_hashtable(u32 size, is_match_t *is_match, hash_t *hash) {

@@ -21,7 +21,7 @@
 
 void init_timer();
 
-typedef void (timer_callback_t)();
+typedef void (timer_callback_t)(void *);
 
 typedef struct {
     u32 execute_time;
@@ -29,9 +29,10 @@ typedef struct {
     u32 repeat;
     u32 cleared;
     timer_callback_t *callback;  
+    void *args;
 } timer_callback_node_t;
 
-timer_callback_node_t *set_callback(timer_callback_t *callback, u32 msec, u8 repeat) {
+timer_callback_node_t *set_callback(timer_callback_t *callback, void* args, u32 msec, u8 repeat) {
 void clear_callback(timer_callback_node_t *callback_node) {
 
 
