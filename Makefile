@@ -2,8 +2,8 @@
 # $< = first dependency
 # $^ = all dependencies
 
-C_SOURCES = $(wildcard kernel/*.c kernel/*/*.c drivers/*.c drivers/*/*.c cpu/*.c)
-HEADERS = $(wildcard kernel/*.h kernel/*/*.h drivers/*.h drivers/*/*.h cpu/*.h)
+C_SOURCES = $(wildcard kernel/*.c kernel/*/*.c kernel/*/*/*.c drivers/*.c drivers/*/*.c cpu/*.c)
+HEADERS = $(wildcard kernel/*.h kernel/*/*.h kernel/*/*/*.h drivers/*.h drivers/*/*.h cpu/*.h)
 
 OBJ = ${C_SOURCES:.c=.o cpu/interrupt.o}
 
@@ -40,13 +40,21 @@ os-image.bin: boot_sector/boot_sector.bin kernel/kernel.bin
 	cp empty_hhd.bin $@ &
 	cat $^ > $@
 
-run: os-image.bin
+run: os-image.bin fs
 	qemu-system-i386 -drive id=disk,file=$<,if=none,format=raw  -device ahci,id=ahci  -device ide-drive,drive=disk,bus=ahci.0
 
 
-debug: os-image.bin kernel/kernel.elf
+debug: os-image.bin fs kernel/kernel.elf
 	qemu-system-i386 -s -drive id=disk,file=$<,if=none,format=raw  -device ahci,id=ahci  -device ide-drive,drive=disk,bus=ahci.0 -d guest_errors,int &
 	${GDB} -ex "target remote localhost:1234" -ex "symbol-file kernel/kernel.elf"
+
+fs-image.bin:
+	dd if=/dev/zero of="fs-image.bin" bs=1024k count=650
+	/sbin/mkfs.ext2 -b 1024 fs-image.bin
+
+fs: fs-image.bin
+	dd if="fs-image.bin" of="os-image.bin" bs=512 seek=255
+
 
 clean:
 	rm -rf *.o *.dis os-image.bin *.elf

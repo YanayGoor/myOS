@@ -69,6 +69,8 @@ void add_storage_device(volatile void *driver_info, storage_operation_t read, st
             } else {
                 kprint("found usable partition at ");
                 print_int(i);
+                kprint("partition offset: ");
+                print_uint(buff->partition_table_entry[i].sector_offset);
 
                 storage_device_t *info = (storage_device_t *)malloc(sizeof(storage_device_t));
                 info->read = read;

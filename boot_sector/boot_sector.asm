@@ -72,6 +72,7 @@ PT1:
     db 0
     db 0
     db 0
+
 PT2:
     db 0x0
 
@@ -90,12 +91,28 @@ PT2:
     db 0
     db 0
 
+    dd 0x00145000
+
+PT3:
+    db 0x0
+
+    db 0xff  ; disk is bigger then 8gb
+    db 0xff
+    db 0xff
+
+    db 0x40
+
+    db 0xff  ; disk is bigger then 8gb
+    db 0xff
+    db 0xff
+
+    dd 0x00145000
+
     db 0xff ; ~0.5 gb
     db 0xff
     db 0xff
     db 0x00
 
-PT3 times 16 db 0             ; Third Partition Entry
 PT4 times 16 db 0
 
 dw 0xaa55

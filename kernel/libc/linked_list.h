@@ -4,6 +4,8 @@
 
 #ifndef MYOS_LINKED_LIST_H
 
+#include "../utils.h"
+
 typedef struct node_t {
     struct node_t *next;
     struct node_t *prev;

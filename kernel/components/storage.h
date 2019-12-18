@@ -5,7 +5,7 @@
 #ifndef STORAGE_H
 
 #include "../utils.h"
-#include "../../libc/linked_list.h"
+#include "../libc/linked_list.h"
 
 typedef struct {
     node_t node;

@@ -1,19 +1,74 @@
 #include "ext2.h"
+#include "vfs.h"
 #include "../../libc/memory.h"
 #include "../../libc/linked_list.h"
 #include "../storage.h"
+
+VFS_dentry_t *_EXT2_vfs_readdir(VFS_inode_t *inode, u32 index) {
+    EXT2_superblock_t *ext2_super = _EXT2_read_superblock(inode->storage_device_id);
+    EXT2_dir_entry_t *ext2_dentry = EXT2_readdir(inode->storage_device_id, ext2_super, inode->id, index);
+    EXT2_inode_t *ext2_inode = EXT2_read_inode(inode->storage_device_id, ext2_super, ext2_dentry->inode);
+    
+    VFS_dentry_t *vfs_dentry = malloc(sizeof(VFS_dentry_t));
+    vfs_dentry->inode = _EXT2_to_VFS_inode(inode->storage_device_id, ext2_super, ext2_inode);
+
+    u32 name_length = ext2_dentry->name_lengthl;
+    if (!ext2_super->version_major) name_length += ext2_dentry->feature_specific.name_lengthh;
+
+    u8 *name = malloc(name_length);
+    memory_copy(&ext2_dentry->name, name, name_length);
+
+    vfs_dentry->name = name;
+    vfs_dentry->parent = inode;
+    return vfs_dentry;
+}
+
+VFS_dentry_t *_EXT2_vfs_lookup(VFS_inode_t *inode, u8 *name) {
+
+}
+
+VFS_inode_t *_EXT2_to_VFS_inode(u32 device_id, EXT2_superblock_t *ext2_super, EXT2_inode_t *ext2_inode) {
+    VFS_inode_t *vfs_inode = malloc(sizeof(VFS_inode_t));
+    vfs_inode->storage_device_id = device_id;
+    vfs_inode->id = 0;
+    vfs_inode->size = _EXT2_get_inode_content_size(ext2_super, ext2_inode);
+    vfs_inode->last_access_time = ext2_inode->last_access_time;
+    vfs_inode->last_modification_time = ext2_inode->last_modification_time;
+    vfs_inode->deletion_time = ext2_inode->deletion_time;
+    vfs_inode->block_size = _EXT2_get_block_size(ext2_super);
+    vfs_inode->readdir = _EXT2_vfs_readdir;
+    return vfs_inode;
+}
+
+void _EXT2_read_vfs_superblock(u32 device_id) {
+    EXT2_superblock_t *ext2_super = _EXT2_read_superblock(device_id);
+    EXT2_inode_t *ext2_inode = EXT2_read_inode(device_id, ext2_super, 0);
+    
+    u32 block_size = _EXT2_get_block_size(ext2_super);
+    
+    VFS_inode_t *vfs_inode = _EXT2_to_VFS_inode(device_id, ext2_super, ext2_inode);
+
+    VFS_superblock_t *vfs_super = malloc(sizeof(VFS_superblock_t));
+    vfs_super->storage_id = device_id;
+    vfs_super->block_size = block_size;
+    vfs_super->mounted = vfs_inode;
+}
+
+void init_ext2() {
+    add_file_system("ext2", _EXT2_read_vfs_superblock);
+}
 
 /**
  * returns a buffer of size 1024 bytes containing the superblock
  * the returned buffer should be freed if storage device disconnects 
  */
-EXT2_superblock_t *_EXT2_read_superblock(u32 device_id) {
+EXT2_superblock_t *_EXT2_read_superblock(u8 device_id) {
     EXT2_superblock_t *buff = (EXT2_superblock_t *)malloc(1024);
     storage_read(device_id, 2, 2, (u32)buff);
     return buff;
 }
 
-EXT2_superblock_t *_EXT2_write_superblock(u32 device_id, EXT2_superblock_t *buff) {
+EXT2_superblock_t *_EXT2_write_superblock(u8 device_id, EXT2_superblock_t *buff) {
     return storage_write(device_id, 2, 2, (u32)buff);
 }
 
@@ -22,23 +77,23 @@ u32 _EXT2_get_block_size(EXT2_superblock_t *superblock) {
     return 1024 << superblock->block_size_exp;
 }
 
-u32 _EXT2_read_blocks(u32 device_id, EXT2_superblock_t *superblock, u32 baddr, u32 count) {
+u32 _EXT2_read_blocks(u8 device_id, EXT2_superblock_t *superblock, u32 baddr, u32 count) {
     u32 block_size = _EXT2_get_block_size(superblock) / 512;
     u32 *buff = (EXT2_block_group_descriptor_t *)malloc(block_size);
     storage_read(device_id, 2 + (baddr * block_size), block_size * count, buff);
     return buff;
 }
 
-u8 _EXT2_write_blocks(u32 device_id, EXT2_superblock_t *superblock, u32 baddr, u32 count, u32 buff) {
+u8 _EXT2_write_blocks(u8 device_id, EXT2_superblock_t *superblock, u32 baddr, u32 count, u32 buff) {
     u32 block_size = _EXT2_get_block_size(superblock) / 512;
     return storage_read(device_id, 2 + (baddr * block_size), block_size * count, buff);
 }
 
-u32 _EXT2_read_block(u32 device_id, EXT2_superblock_t *superblock, u32 baddr) {
+u32 _EXT2_read_block(u8 device_id, EXT2_superblock_t *superblock, u32 baddr) {
     return _EXT2_read_blocks(device_id, superblock, baddr, 1);
 }
 
-u32 _EXT2_write_block(u32 device_id, EXT2_superblock_t *superblock, u32 baddr, u32 buffer) {
+u32 _EXT2_write_block(u8 device_id, EXT2_superblock_t *superblock, u32 baddr, u32 buffer) {
     return _EXT2_write_blocks(device_id, superblock, baddr, 1, buffer);
 }
 
@@ -47,15 +102,15 @@ u32 _EXT2_get_block_group_count(EXT2_superblock_t *superblock) {
     return superblock->total_blocks / superblock->blocks_in_block_group + !!(superblock->total_blocks % superblock->blocks_in_block_group);
 }
 
-EXT2_block_group_descriptor_t *_EXT2_read_group_descriptors(u32 device_id, EXT2_superblock_t *superblock) {
+EXT2_block_group_descriptor_t *_EXT2_read_group_descriptors(u8 device_id, EXT2_superblock_t *superblock) {
     return _EXT2_read_block(device_id, superblock, 1);
 }
 
-EXT2_block_group_descriptor_t *_EXT2_write_group_descriptors(u32 device_id, EXT2_superblock_t *superblock, u32 buff) {
+EXT2_block_group_descriptor_t *_EXT2_write_group_descriptors(u8 device_id, EXT2_superblock_t *superblock, u32 buff) {
     return _EXT2_write_block(device_id, superblock, 1, buff);
 }
 
-EXT2_inode_t *EXT2_read_inode(u32 device_id, EXT2_superblock_t *superblock, u32 inode) {
+EXT2_inode_t *EXT2_read_inode(u8 device_id, EXT2_superblock_t *superblock, u32 inode) {
     u32 inodes_per_group = superblock->inodes_in_block_group;
     u32 block_group = (inode - 1) / inodes_per_group;
     u32 index_in_group = (inode - 1) % inodes_per_group;
@@ -124,7 +179,7 @@ u32 _EXT2_transform_blocks_to_vectors(EXT2_superblock_t *superblock, u32 *buffer
     return storage_curr;
 }
 
-void _EXT2_read_inode_direct_blocks(u32 device_id, EXT2_superblock_t *superblock, EXT2_inode_t *inode, u32 offset, u32 length, u32 *buffer) {
+void _EXT2_read_inode_direct_blocks(u8 device_id, EXT2_superblock_t *superblock, EXT2_inode_t *inode, u32 offset, u32 length, u32 *buffer) {
     u32 block_size = _EXT2_get_block_size(superblock);
     u32 block_proportion = block_size / 512;
     u32 sectors_in_block = block_size / 512;
@@ -134,7 +189,7 @@ void _EXT2_read_inode_direct_blocks(u32 device_id, EXT2_superblock_t *superblock
     }
 }
 
-void _EXT2_write_inode_direct_blocks(u32 device_id, EXT2_superblock_t *superblock, EXT2_inode_t *inode, u32 offset, u32 length, u32 *buffer) {
+void _EXT2_write_inode_direct_blocks(u8 device_id, EXT2_superblock_t *superblock, EXT2_inode_t *inode, u32 offset, u32 length, u32 *buffer) {
     u32 block_size = _EXT2_get_block_size(superblock);
     u32 block_proportion = block_size / 512;
     u32 sectors_in_block = block_size / 512;
@@ -144,7 +199,7 @@ void _EXT2_write_inode_direct_blocks(u32 device_id, EXT2_superblock_t *superbloc
     }
 }
 
-void _EXT2_read_inode_ptr_blocks(u32 device_id, EXT2_superblock_t *superblock, u32 block, u32 depth, u32 offset, u32 length, u32 *buffer) {
+void _EXT2_read_inode_ptr_blocks(u8 device_id, EXT2_superblock_t *superblock, u32 block, u32 depth, u32 offset, u32 length, u32 *buffer) {
     u32 block_size = _EXT2_get_block_size(superblock);
     u32 sectors_in_block = block_size / 512;
     u32 *ptr_block = (u32 *)_EXT2_read_block(device_id, superblock, block);
@@ -159,7 +214,7 @@ void _EXT2_read_inode_ptr_blocks(u32 device_id, EXT2_superblock_t *superblock, u
     free(ptr_block);
 }
 
-void _EXT2_read_inode_ptr_blocks(u32 device_id, EXT2_superblock_t *superblock, u32 block, u32 depth, u32 offset, u32 length, u32 *buffer) {
+void _EXT2_read_inode_ptr_blocks(u8 device_id, EXT2_superblock_t *superblock, u32 block, u32 depth, u32 offset, u32 length, u32 *buffer) {
     u32 block_size = _EXT2_get_block_size(superblock);
     u32 sectors_in_block = block_size / 512;
     u32 *ptr_block = (u32 *)_EXT2_read_block(device_id, superblock, block);
@@ -174,7 +229,7 @@ void _EXT2_read_inode_ptr_blocks(u32 device_id, EXT2_superblock_t *superblock, u
     free(ptr_block);
 }
 
-void _EXT2_read_inode_blocks(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 offset, u32 length, u32 *buffer) {
+void _EXT2_read_inode_blocks(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 offset, u32 length, u32 *buffer) {
     // offset, length ==> in 512 byte units
     EXT2_inode_t *inode = EXT2_read_inode(device_id, superblock, inode_i);
     u32 block_size = _EXT2_get_block_size(superblock);
@@ -202,7 +257,7 @@ void _EXT2_read_inode_blocks(u32 device_id, EXT2_superblock_t *superblock, u32 i
     _EXT2_read_inode_ptr_blocks(device_id, superblock, inode->doubly_block_ptr, 3, offset, length, buffer + pow(block_size / sizeof(u32), 2));
 }
 
-void _EXT2_write_inode_blocks(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 offset, u32 length, u32 *buffer) {
+void _EXT2_write_inode_blocks(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 offset, u32 length, u32 *buffer) {
     // offset, length ==> in 512 byte units
     EXT2_inode_t *inode = EXT2_read_inode(device_id, superblock, inode_i);
     u32 block_size = _EXT2_get_block_size(superblock);
@@ -230,14 +285,14 @@ void _EXT2_write_inode_blocks(u32 device_id, EXT2_superblock_t *superblock, u32 
     _EXT2_write_inode_ptr_blocks(device_id, superblock, inode->doubly_block_ptr, 3, offset, length, buffer + pow(block_size / sizeof(u32), 2));
 }
 
-u32 _EXT2_read_inode_block(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 offset) {
+u32 _EXT2_read_inode_block(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 offset) {
     u32 buff;
     u32 block_size = _EXT2_get_block_size(superblock);
     _EXT2_read_inode_blocks(device_id, superblock, inode_i, offset, block_size, &buff);
     return buff;
 }
 
-u32 _EXT2_read_inode_last_block(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i) {
+u32 _EXT2_read_inode_last_block(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i) {
     EXT2_inode_t *inode = EXT2_read_inode(device_id, superblock, inode_i);
     u64 curr_size = inode->sizel;
     if (superblock->version_major >= 1) curr_size += inode->version_specific2.sizeh << 32;
@@ -256,7 +311,7 @@ u64 _EXT2_get_inode_content_size(EXT2_superblock_t *superblock, EXT2_inode_t *in
     return curr_size;
 }
 
-u32 _EXT2_append_contagious_inode_blocks(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 starting_block, u32 size) {
+u32 _EXT2_append_contagious_inode_blocks(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 starting_block, u32 size) {
     EXT2_inode_t *inode = EXT2_read_inode(device_id, superblock, inode_i);
     u32 content_size_in_sectors = _EXT2_get_inode_content_size(superblock, inode) / 512;
     u32 *buffer = malloc(size * sizeof(u32)); 
@@ -289,7 +344,7 @@ u32 _EXT2_alloc_in_bitmap(u32 *bitmap, u32 offset, u32 length) {
     bitmap[bitmap_index + 1] |= bits_between(bitmap_offset, bitmap_offset + length) << 32;
 }
 
- u32 _EXT2_alloc_inode_data_block(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 *size) {
+ u32 _EXT2_alloc_inode_data_block(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 *size) {
      //TODO: make function with size and make this function get last_block as param
     EXT2_inode_t *inode = EXT2_read_inode(device_id, superblock, inode_i);
     u64 curr_size = inode->sizel;
@@ -400,7 +455,7 @@ u32 _EXT2_alloc_in_bitmap(u32 *bitmap, u32 offset, u32 length) {
     return 0;
 }
 
-u32 EXT2_resize_inode_data(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 size) {
+u32 EXT2_resize_inode_data(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 size) {
     while (size > 0) {
         u32 allocated;
         u32 block = _EXT2_alloc_inode_data_block(device_id, superblock, inode_i, &allocated);
@@ -415,7 +470,7 @@ u32 EXT2_resize_inode_data(u32 device_id, EXT2_superblock_t *superblock, u32 ino
     return 0;
 }
 
-u32 EXT2_read_inode_data(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 offset, u32 length) {
+u32 EXT2_read_inode_data(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 offset, u32 length) {
     u32 block_size = _EXT2_get_block_size(superblock);
     u32 buffer_size = length * 512 / sizeof(u32) / block_size;
     u32 *block_buffer = malloc(buffer_size);
@@ -428,7 +483,7 @@ u32 EXT2_read_inode_data(u32 device_id, EXT2_superblock_t *superblock, u32 inode
     return buff;
 }
 
-u32 EXT2_write_inode_data(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 offset, u32 length, u32 *buffer) {
+u32 EXT2_write_inode_data(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 offset, u32 length, u32 *buffer) {
     u32 data_size_in_sectors = _EXT2_get_inode_content_size(superblock, EXT2_read_inode(device_id, superblock, inode_i)) / 512;
     if (offset + length > data_size_in_sectors) {
         EXT2_resize_inode_data(device_id, superblock, inode_i, offset + length - data_size_in_sectors);
@@ -443,7 +498,7 @@ u32 EXT2_write_inode_data(u32 device_id, EXT2_superblock_t *superblock, u32 inod
     return storage_write_scatter(device_id, storage_nodes, buffer);
 }
 
-EXT2_dir_entry_t *EXT2_lookup(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, char* name) {
+EXT2_dir_entry_t *EXT2_lookup(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, char* name) {
     // TODO: dont read the whole inode data at the same time 
     EXT2_inode_t *inode = EXT2_read_inode(device_id, superblock, inode_i);
     u32 inode_data_size_in_sectors = _EXT2_get_inode_content_size(superblock, inode) / 512;
@@ -475,7 +530,7 @@ EXT2_dir_entry_t *EXT2_lookup(u32 device_id, EXT2_superblock_t *superblock, u32 
     return 0;
 }
 
-EXT2_dir_entry_t *EXT2_readdir(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 index) {
+EXT2_dir_entry_t *EXT2_readdir(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 index) {
     // TODO: dont read the whole inode data at the same time 
     EXT2_inode_t *inode = EXT2_read_inode(device_id, superblock, inode_i);
     u32 inode_data_size_in_sectors = _EXT2_get_inode_content_size(superblock, inode) / 512;
@@ -500,11 +555,10 @@ EXT2_dir_entry_t *EXT2_readdir(u32 device_id, EXT2_superblock_t *superblock, u32
     return 0;
 }
 
-EXT2_inode_t *EXT2_create(u32 device_id, EXT2_superblock_t *superblock, u32 inode_i, char* name) {
-    
+EXT2_inode_t *EXT2_create(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, char* name) {   
 }
 
-u32 _EXT2_alloc_inode_in_group(u32 device_id, EXT2_superblock_t *superblock, u32 group) {
+u32 _EXT2_alloc_inode_in_group(u8 device_id, EXT2_superblock_t *superblock, u32 group) {
     EXT2_block_group_descriptor_t *groups = _EXT2_read_group_descriptors(device_id, superblock);
     u8 *bitmap = (u32 *)_EXT2_read_block(device_id, superblock, groups[group].inode_usage_bitmap_baddr);
     u32 inode_starting_index = superblock->inodes_in_block_group * group;
@@ -533,7 +587,7 @@ u32 _EXT2_alloc_inode_in_group(u32 device_id, EXT2_superblock_t *superblock, u32
     return 0;
 }
 
-u32 EXT2_alloc_inode(u32 device_id, EXT2_superblock_t *superblock, u32 dir_group, u8 type) {
+u32 EXT2_alloc_inode(u8 device_id, EXT2_superblock_t *superblock, u32 dir_group, u8 type) {
     EXT2_block_group_descriptor_t *groups = _EXT2_read_group_descriptors(device_id, superblock);
     u32 count = _EXT2_get_block_group_count(superblock);
     if (type == EXT2_inode_type_dir) {

@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "components/paging.h"
 #include "components/storage.h"
+#include "components/fs/ext2.h"
 
 /* This will force us to create a kernel entry function instead of jumping to kernel.c:0x00 */
 void dummy_test_entrypoint() {
@@ -91,12 +92,20 @@ void main() {
 
     init_ahci_driver();
 
+    init_ext2();
+
     pci_detect_devices();
 
     u32 *buff = (u32 *)malloc(512);
     storage_read(0, 0, 1, (u32)buff);
 
+    u32 *buff2 = (u32 *)malloc(2048);
+    storage_read(0, 0, 4, (u32)buff2);
+
+    EXT2_superblock_t *super = (EXT2_superblock_t *)(buff2 + 256);
+
     print_uint(*buff);
+    print_uint(super);
 
     while(1) {}
 

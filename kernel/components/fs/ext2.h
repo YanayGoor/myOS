@@ -153,6 +153,8 @@ typedef struct {
     EXT2_superblock_extended_t extended;
 } EXT2_superblock_t;
 
+void init_ext2();
+
 #define MYOS_EXT2_H
 
 #endif //MYOS_EXT2_H
