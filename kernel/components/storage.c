@@ -6,6 +6,7 @@
 #include "../libc/memory.h"
 #include "../libc/linked_list.h"
 #include "storage.h"
+#include "fs/vfs.h"
 
 storage_device_t storage_devices[256];
 u8 storage_devices_len = 0;
@@ -61,11 +62,13 @@ void add_storage_device(volatile void *driver_info, storage_operation_t read, st
     mbr_t *buff = (mbr_t *)malloc(512);
     read(driver_info, 0, 1, (u32)buff);
     int i;
+    kprint("\n");
     for (i = 0; i < 4; i++) {
         if (buff->partition_table_entry[i].system_id != 0) {
             if (buff->partition_table_entry[i].active == 0x80) {
                 kprint("found os owned partition at ");
                 print_int(i);
+                kprint("\n");
             } else {
                 kprint("found usable partition at ");
                 print_int(i);
@@ -89,6 +92,27 @@ void add_storage_device(volatile void *driver_info, storage_operation_t read, st
                 storage_devices[storage_devices_len].write = partition_write;
                 storage_devices[storage_devices_len].read = partition_read;
                 storage_devices[storage_devices_len].write = partition_write;
+
+                u8 fs_id = 0;
+                VFS_fs_t *fs;
+                while (( fs = get_file_system_at(fs_id) )) {
+                    if (fs->confirm_partition(storage_devices_len)) {
+                        kprint("detected fs: ");
+                        kprint(fs->name);
+                        kprint("\n");
+                        if (!get_mounted_file_system_at(0)) {
+                            mount_file_system(fs_id, storage_devices_len, 0);
+                        }
+                        break;
+                    }
+                    fs_id++;
+                }
+                if (!fs) {
+                    kprint("no fs detected\n");
+                }
+
+
+                kprint("\n");
                 storage_devices_len += 1;
             }
         }

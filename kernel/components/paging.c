@@ -67,5 +67,5 @@ void init_paging() {
         identity_map_page(paddr, 0x1000 * i, 0);
     }
     switch_page_directory(paddr);
-    enable_paging();
+    // enable_paging();
 }

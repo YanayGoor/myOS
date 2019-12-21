@@ -232,6 +232,7 @@ void init_ports(AHCI_HBA_memory_t *memory) {
 //#define abar_virtual ((u32)(50000 * 0x1000))
 
 void init_ahci_driver_for_device(u8 bus, u8 device, u8 function) {
+    pci_conf_header_descriptor_t pci_BAR5 = {0x24, 4};
     kprint("I'm an ahci driver for device on bus num ");
     print_int(bus);
     u32 abar = pci_config_read_header(bus, device, function, pci_BAR5);

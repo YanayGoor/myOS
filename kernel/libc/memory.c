@@ -6,6 +6,7 @@
 u32 memory_addr = 0x10000;
 
 u32 kmalloc(u32 size, u32 page_aligned, u32 *addr) {
+    if (!memory_addr) memory_addr = 0x10000;
     if (page_aligned && (memory_addr & 0xfff)) {
         memory_addr &= 0xfffff000;
         memory_addr += 0x1000;
@@ -229,8 +230,8 @@ void memprint_int(int i) {
     kprint("-");
 }
 
-void free(u32 data) {
-    chunk_header_t *chunk = (chunk_header_t *)(data - PRESENT_HEADER_SIZE);
+void free(void *data) {
+    chunk_header_t *chunk = (chunk_header_t *)(((u32)data) - PRESENT_HEADER_SIZE);
     chunk->present = 0;
     chunk->node.next = 0;
     chunk->node.prev = 0;

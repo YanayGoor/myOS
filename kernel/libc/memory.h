@@ -16,6 +16,6 @@ u32 malloc(u32 size);
 
 u32 malloc_a(u32 size);
 
-void free(u32 data);
+void free(void *data);
 
 #endif

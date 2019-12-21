@@ -56,7 +56,7 @@ typedef struct inode_t {
 typedef struct {
     u8 storage_id;
     u16 block_size;
-    VFS_fs_t *type;
+    u8 fs_id;
     VFS_inode_t *mounted; // the mounted root inode
     VFS_inode_t *covered; // the inode the superblock is covering
 //     VFS_create_t create; // create inode
@@ -64,14 +64,26 @@ typedef struct {
     void *fs_specific;
 } VFS_superblock_t;
 
-typedef void (read_super_t)(u8 storage_id);
+typedef VFS_superblock_t *(read_super_t)(u8 storage_id);
+typedef u8 (confirm_partition_t)(u8 storage_id);
 
 typedef struct VFS_fs_t {
     read_super_t *read_super;
+    confirm_partition_t *confirm_partition;
     char *name;
 } VFS_fs_t;
 
-void add_file_system(char *name, read_super_t read_super);
+typedef struct {
+    VFS_fs_t *fs;
+    VFS_superblock_t *superblock;
+    u8 storage_id;
+} VFS_mounted_fs_t;
 
+void add_file_system(char *name, read_super_t read_super, confirm_partition_t confirm_partition);
+VFS_fs_t *get_file_system_at(u8 fs_id);
+
+void mount_file_system(u8 fs_id, u8 storage_id, VFS_inode_t *covered);
+void unmount_file_system(u8 fs_id, u8 storage_id);
+VFS_mounted_fs_t *get_mounted_file_system_at(u8 mounted_fs_id);
 
 #endif

@@ -103,12 +103,28 @@ u8 pci_check_device(u8 bus, u8 device) {
 }
 
 void print_details(u8 bus, u8 device, u8 function) {
+    pci_conf_header_descriptor_t pci_deviceID = {2, 2};
+    pci_conf_header_descriptor_t pci_vendorID = {0, 2};
+    pci_conf_header_descriptor_t pci_class_code = {11, 1};
+    pci_conf_header_descriptor_t pci_subclass = {10, 1};
+    pci_conf_header_descriptor_t pci_header_type = {0x0e, 1};
+    pci_conf_header_descriptor_t pci_progIF = {0x09, 1};
+    pci_conf_header_descriptor_t pci_BAR0 = {0x10, 4};
+    pci_conf_header_descriptor_t pci_BAR1 = {0x14, 4};
+    pci_conf_header_descriptor_t pci_BAR2 = {0x18, 4};
+    pci_conf_header_descriptor_t pci_BAR3 = {0x1c, 4};
+    pci_conf_header_descriptor_t pci_BAR4 = {0x20, 4};
+    pci_conf_header_descriptor_t pci_BAR5 = {0x24, 4};
+    pci_conf_header_descriptor_t pci_interrupt_pin = {0x3d, 1};
+    pci_conf_header_descriptor_t pci_interrupt_line = {0x3c, 1};
+
     u32 vendor = pci_config_read_header(bus, device, function, pci_vendorID);
     u32 device_id = pci_config_read_header(bus, device, function, pci_deviceID);
     u32 class = pci_config_read_header(bus, device, function, pci_class_code);
     u32 subclass = pci_config_read_header(bus, device, function, pci_subclass);
     char *name;
     if (class < PCI_NAMED_CLASSES_COUNT) name = pci_class_names[class];
+    if (!vendor) return;
 //    char **names;
     kprint("vendor id: ");
     print_int(vendor);
@@ -128,6 +144,21 @@ void print_details(u8 bus, u8 device, u8 function) {
 }
 
 void pci_detect_devices() {
+    pci_conf_header_descriptor_t pci_deviceID = {2, 2};
+    pci_conf_header_descriptor_t pci_vendorID = {0, 2};
+    pci_conf_header_descriptor_t pci_class_code = {11, 1};
+    pci_conf_header_descriptor_t pci_subclass = {10, 1};
+    pci_conf_header_descriptor_t pci_header_type = {0x0e, 1};
+    pci_conf_header_descriptor_t pci_progIF = {0x09, 1};
+    pci_conf_header_descriptor_t pci_BAR0 = {0x10, 4};
+    pci_conf_header_descriptor_t pci_BAR1 = {0x14, 4};
+    pci_conf_header_descriptor_t pci_BAR2 = {0x18, 4};
+    pci_conf_header_descriptor_t pci_BAR3 = {0x1c, 4};
+    pci_conf_header_descriptor_t pci_BAR4 = {0x20, 4};
+    pci_conf_header_descriptor_t pci_BAR5 = {0x24, 4};
+    pci_conf_header_descriptor_t pci_interrupt_pin = {0x3d, 1};
+    pci_conf_header_descriptor_t pci_interrupt_line = {0x3c, 1};
+
     u8 bus;
     u8 device;
     kprint("\n");

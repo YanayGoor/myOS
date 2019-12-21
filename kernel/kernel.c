@@ -54,9 +54,9 @@ void main() {
     kprint("free(address)\n");
     kprint("free(address3)\n");
     kprint("free(address2)\n");
-    free(address);
-    free(address3);
-    free(address2);
+    free((void *)address);
+    free((void *)address3);
+    free((void *)address2);
 
 
     kprint("malloc(1200) = ");
@@ -81,14 +81,14 @@ void main() {
     kprint("free(address)\n");
     kprint("free(address3)\n");
     kprint("free(address2)\n");
-    free(address);
-    free(address3);
-    free(address2);
+    free((void *)address);
+    free((void *)address3);
+    free((void *)address2);
 
     kprint("malloc_a(1200) = ");
     print_int(malloc_a(1200));
 
-    kprint("(uses the same space as freed chunks)");
+    kprint("(uses the same space as freed chunks)\n");
 
     init_ahci_driver();
 
@@ -105,7 +105,7 @@ void main() {
     EXT2_superblock_t *super = (EXT2_superblock_t *)(buff2 + 256);
 
     print_uint(*buff);
-    print_uint(super);
+    print_uint((u32)super);
 
     while(1) {}
 
