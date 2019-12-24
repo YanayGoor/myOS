@@ -43,8 +43,9 @@ u8 _EXT2_vfs_confirm(u8 storage_id) {
 
 VFS_inode_t *_EXT2_to_VFS_inode(u8 device_id, EXT2_superblock_t *ext2_super, EXT2_inode_t *ext2_inode) {
     VFS_inode_t *vfs_inode = (VFS_inode_t *)malloc(sizeof(VFS_inode_t));
+    memory_set((char *)vfs_inode, 0, sizeof(VFS_inode_t));
     vfs_inode->storage_device_id = device_id;
-    vfs_inode->id = 0;
+    vfs_inode->id = 2;
     vfs_inode->size = _EXT2_get_inode_content_size(ext2_super, ext2_inode);
     vfs_inode->last_access_time = ext2_inode->last_access_time;
     vfs_inode->last_modification_time = ext2_inode->last_modification_time;
@@ -56,13 +57,14 @@ VFS_inode_t *_EXT2_to_VFS_inode(u8 device_id, EXT2_superblock_t *ext2_super, EXT
 
 void _EXT2_read_vfs_superblock(u8 device_id) {
     EXT2_superblock_t *ext2_super = _EXT2_read_superblock(device_id);
-    EXT2_inode_t *ext2_inode = EXT2_read_inode(device_id, ext2_super, 0);
+    EXT2_inode_t *ext2_inode = EXT2_read_inode(device_id, ext2_super, 2);
     
     u32 block_size = _EXT2_get_block_size(ext2_super);
     
     VFS_inode_t *vfs_inode = _EXT2_to_VFS_inode(device_id, ext2_super, ext2_inode);
 
     VFS_superblock_t *vfs_super = (VFS_superblock_t *)malloc(sizeof(VFS_superblock_t));
+    memory_set((char *)vfs_super, 0, sizeof(VFS_superblock_t));
     vfs_super->storage_id = device_id;
     vfs_super->block_size = block_size;
     vfs_super->mounted = vfs_inode;
@@ -94,14 +96,14 @@ u32 _EXT2_get_block_size(EXT2_superblock_t *superblock) {
 
 u32 *_EXT2_read_blocks(u8 device_id, EXT2_superblock_t *superblock, u32 baddr, u32 count) {
     u32 block_size = _EXT2_get_block_size(superblock) / 512;
-    u32 buff = malloc(block_size);
-    storage_read(device_id, 2 + (baddr * block_size), block_size * count, buff);
+    u32 buff = malloc(block_size * count * 512);
+    storage_read(device_id, baddr * block_size, block_size * count, buff);
     return (u32 *)buff;
 }
 
 u8 _EXT2_write_blocks(u8 device_id, EXT2_superblock_t *superblock, u32 baddr, u32 count, u32 buff) {
     u32 block_size = _EXT2_get_block_size(superblock) / 512;
-    return storage_read(device_id, 2 + (baddr * block_size), block_size * count, buff);
+    return storage_read(device_id, baddr * block_size, block_size * count, buff);
 }
 
 u32 *_EXT2_read_block(u8 device_id, EXT2_superblock_t *superblock, u32 baddr) {
@@ -118,7 +120,7 @@ u32 _EXT2_get_block_group_count(EXT2_superblock_t *superblock) {
 }
 
 EXT2_block_group_descriptor_t *_EXT2_read_group_descriptors(u8 device_id, EXT2_superblock_t *superblock) {
-    return (EXT2_block_group_descriptor_t *)_EXT2_read_block(device_id, superblock, 1);
+    return (EXT2_block_group_descriptor_t *)_EXT2_read_block(device_id, superblock, 3);
 }
 
 u32 _EXT2_write_group_descriptors(u8 device_id, EXT2_superblock_t *superblock, u32 buff) {
@@ -136,10 +138,10 @@ EXT2_inode_t *EXT2_read_inode(u8 device_id, EXT2_superblock_t *superblock, u32 i
     // get the group descriptor
     EXT2_block_group_descriptor_t *groups = _EXT2_read_group_descriptors(device_id, superblock);
     // read the block on the inode table
-    u32 *inode_table_block = _EXT2_read_blocks(device_id, superblock, groups[block_group].inode_table_baddr + inode / inodes_per_group, 1);
+    u32 *inode_table_block = _EXT2_read_blocks(device_id, superblock, groups[block_group].inode_table_baddr + (index_in_group / inodes_per_block), 1);
     // copy the desired inode
     EXT2_inode_t *result = (EXT2_inode_t *)malloc(inode_size);
-    memory_copy((char *)(inode_table_block + inode_size * inode % inodes_per_group), (char *)result, inode_size);
+    memory_copy((char *)inode_table_block + (inode_size * (index_in_group % inodes_per_block)), (char *)result, inode_size);
     // release used resources
     //TODO: implement buffer caching for less malloc and free and device reads
     free(inode_table_block);

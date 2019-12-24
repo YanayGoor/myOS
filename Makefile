@@ -50,7 +50,7 @@ debug: os-image.bin fs kernel/kernel.elf
 
 fs-image.bin:
 	dd if=/dev/zero of="fs-image.bin" bs=1024k count=650
-	/sbin/mkfs.ext2 -b 1024 fs-image.bin
+	/sbin/mkfs.ext2 -b 1024 -O ^ext_attr,^resize_inode,^dir_index,^filetype,^sparse_super,^large_file fs-image.bin
 
 fs: fs-image.bin
 	dd if="fs-image.bin" of="os-image.bin" bs=512 seek=255

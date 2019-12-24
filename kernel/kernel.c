@@ -8,6 +8,7 @@
 #include "components/paging.h"
 #include "components/storage.h"
 #include "components/fs/ext2.h"
+#include "components/fs/vfs.h"
 
 /* This will force us to create a kernel entry function instead of jumping to kernel.c:0x00 */
 void dummy_test_entrypoint() {
@@ -106,6 +107,12 @@ void main() {
 
     print_uint(*buff);
     print_uint((u32)super);
+
+    VFS_mounted_fs_t *fs = get_mounted_file_system_at(0);
+
+    EXT2_inode_t *inode0 = EXT2_read_inode(0, _EXT2_read_superblock(0), 0);
+    EXT2_inode_t *inode1 = EXT2_read_inode(0, _EXT2_read_superblock(0), 1);
+    EXT2_inode_t *inode2 = EXT2_read_inode(0, _EXT2_read_superblock(0), 2);
 
     while(1) {}
 

@@ -17,7 +17,7 @@ void add_file_system(char *name, read_super_t read_super, confirm_partition_t co
     kprint("fs name: ");
     kprint(name);
     kprint("\n\n");
-    filesystems_count++;
+    ++filesystems_count;
 }
 
 VFS_fs_t *get_file_system_at(u8 fs_id) {
@@ -31,16 +31,16 @@ void mount_file_system(u8 fs_id, u8 storage_id, VFS_inode_t *covered) {
     VFS_fs_t *fs = get_file_system_at(fs_id);
     VFS_superblock_t *super = fs->read_super(storage_id);
     mounted_filesystems[mounted_filesystems_count].superblock = super;
-    if (covered) {
-        super->covered = covered;
-        covered->ptr = super->mounted;
-    }
+    // if (covered) {
+    //     super->covered = covered;
+    //     covered->ptr = super->mounted;
+    // }
     kprint("\nmounted filesystem at ");
     print_uint(mounted_filesystems_count);
     kprint("fs name: ");
     kprint(get_file_system_at(fs_id)->name);
     kprint("\n");
-    mounted_filesystems_count++;
+    ++mounted_filesystems_count;
 }
 
 VFS_mounted_fs_t *get_mounted_file_system_at(u8 mounted_fs_id) {
