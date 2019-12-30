@@ -46,6 +46,8 @@ VFS_inode_t *_EXT2_to_VFS_inode(u8 device_id, EXT2_superblock_t *ext2_super, EXT
     memory_set((char *)vfs_inode, 0, sizeof(VFS_inode_t));
     vfs_inode->storage_device_id = device_id;
     vfs_inode->id = 2;
+    vfs_inode->permissions = ext2_inode->permissions;
+    vfs_inode->type = ext2_inode->type;
     vfs_inode->size = _EXT2_get_inode_content_size(ext2_super, ext2_inode);
     vfs_inode->last_access_time = ext2_inode->last_access_time;
     vfs_inode->last_modification_time = ext2_inode->last_modification_time;
@@ -120,7 +122,7 @@ u32 _EXT2_get_block_group_count(EXT2_superblock_t *superblock) {
 }
 
 EXT2_block_group_descriptor_t *_EXT2_read_group_descriptors(u8 device_id, EXT2_superblock_t *superblock) {
-    return (EXT2_block_group_descriptor_t *)_EXT2_read_block(device_id, superblock, 3);
+    return (EXT2_block_group_descriptor_t *)_EXT2_read_block(device_id, superblock, 2);
 }
 
 u32 _EXT2_write_group_descriptors(u8 device_id, EXT2_superblock_t *superblock, u32 buff) {
@@ -155,7 +157,7 @@ u32 divide_ceil(u32 a, u32 b) {
 
 
 u32 min(u32 a, u32 b) {
-    if (a > b) return a;
+    if (a < b) return a;
     return b;
 }
 
@@ -172,7 +174,7 @@ u32 pow(u32 a, u32 b) {
 
 storage_vector_node_t *_EXT2_transform_blocks_to_vectors(EXT2_superblock_t *superblock, u32 *buffer, u32 buffer_size) {
     u32 block_size = _EXT2_get_block_size(superblock);
-    storage_vector_node_t *storage_curr;
+    storage_vector_node_t *storage_curr = (storage_vector_node_t *)malloc(sizeof(storage_vector_node_t));
     int i;
     for (i = 0; i < buffer_size; i++) {
         if (!storage_curr->node.prev) {
@@ -198,20 +200,18 @@ storage_vector_node_t *_EXT2_transform_blocks_to_vectors(EXT2_superblock_t *supe
 
 void _EXT2_read_inode_direct_blocks(u8 device_id, EXT2_superblock_t *superblock, EXT2_inode_t *inode, u32 offset, u32 length, u32 *buffer) {
     u32 block_size = _EXT2_get_block_size(superblock);
-    u32 block_proportion = block_size / 512;
     u32 sectors_in_block = block_size / 512;
     int i;
-    for (i = offset / sectors_in_block; i < min(divide_ceil(length, sectors_in_block), 12); i++) {
+    for (i = offset / sectors_in_block; i < min(divide_ceil(offset + length, sectors_in_block), 12); i++) {
         buffer[i] = inode->block_ptr[i];
     }
 }
 
 void _EXT2_write_inode_direct_blocks(u8 device_id, EXT2_superblock_t *superblock, EXT2_inode_t *inode, u32 offset, u32 length, u32 *buffer) {
     u32 block_size = _EXT2_get_block_size(superblock);
-    u32 block_proportion = block_size / 512;
     u32 sectors_in_block = block_size / 512;
     int i;
-    for (i = offset / sectors_in_block; i < min(divide_ceil(length, sectors_in_block), 12); i++) {
+    for (i = offset / sectors_in_block; i < min(divide_ceil(offset + length, sectors_in_block), 12); i++) {
         inode->block_ptr[i] = buffer[i];
     }
 }
@@ -221,7 +221,7 @@ void _EXT2_read_inode_ptr_blocks(u8 device_id, EXT2_superblock_t *superblock, u3
     u32 sectors_in_block = block_size / 512;
     u32 *ptr_block = (u32 *)_EXT2_read_block(device_id, superblock, block);
     int i;
-    for (i = offset / sectors_in_block; i < min(divide_ceil(length, sectors_in_block), pow(block_size / sizeof(u32), depth)); i+= pow(block_size / sizeof(u32), depth - 1)) {
+    for (i = offset / sectors_in_block; i < min(divide_ceil(offset + length, sectors_in_block), pow(block_size / sizeof(u32), depth)); i+= pow(block_size / sizeof(u32), depth - 1)) {
         if (depth == 1) {
             buffer[i] = ptr_block[i];
         } else {
@@ -236,7 +236,7 @@ void _EXT2_write_inode_ptr_blocks(u8 device_id, EXT2_superblock_t *superblock, u
     u32 sectors_in_block = block_size / 512;
     u32 *ptr_block = (u32 *)_EXT2_read_block(device_id, superblock, block);
     int i;
-    for (i = offset / sectors_in_block; i < min(divide_ceil(length, sectors_in_block), pow(block_size / sizeof(u32), depth)); i+= pow(block_size / sizeof(u32), depth - 1)) {
+    for (i = offset / sectors_in_block; i < min(divide_ceil(offset + length, sectors_in_block), pow(block_size / sizeof(u32), depth)); i+= pow(block_size / sizeof(u32), depth - 1)) {
         if (depth == 1) {
             ptr_block[i] = buffer[i];
         } else {
@@ -493,13 +493,13 @@ u32 EXT2_resize_inode_data(u8 device_id, EXT2_superblock_t *superblock, u32 inod
 
 u32 EXT2_read_inode_data(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, u32 offset, u32 length) {
     u32 block_size = _EXT2_get_block_size(superblock);
-    u32 buffer_size = length * 512 / sizeof(u32) / block_size;
-    u32 *block_buffer = (u32 *)malloc(buffer_size);
+    u32 blocks_count = length * 512 / block_size;
+    u32 *block_buffer = (u32 *)malloc(blocks_count * sizeof(u32));
     _EXT2_read_inode_blocks(device_id, superblock, inode_i, offset, length, block_buffer);
 
-    u32 buff = malloc(length);
+    u32 buff = malloc(length * 512);
 
-    storage_vector_node_t *storage_nodes = _EXT2_transform_blocks_to_vectors(superblock, block_buffer, buffer_size);
+    storage_vector_node_t *storage_nodes = _EXT2_transform_blocks_to_vectors(superblock, block_buffer, blocks_count);
     storage_read_gather(device_id, storage_nodes, buff);
     return buff;
 }
@@ -511,7 +511,7 @@ u32 EXT2_write_inode_data(u8 device_id, EXT2_superblock_t *superblock, u32 inode
     }
 
     u32 block_size = _EXT2_get_block_size(superblock);
-    u32 buffer_size = length * 512 / sizeof(u32) / block_size;
+    u32 buffer_size = length * 512 / block_size;
     u32 *block_buffer = (u32 *)malloc(buffer_size);
     _EXT2_read_inode_blocks(device_id, superblock, inode_i, offset, length, block_buffer);
 

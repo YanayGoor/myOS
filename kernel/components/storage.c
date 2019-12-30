@@ -90,8 +90,8 @@ void add_storage_device(volatile void *driver_info, storage_operation_t read, st
                 storage_devices[storage_devices_len].driver_info = partition_info;
                 storage_devices[storage_devices_len].read = partition_read;
                 storage_devices[storage_devices_len].write = partition_write;
-                storage_devices[storage_devices_len].read = partition_read;
-                storage_devices[storage_devices_len].write = partition_write;
+                storage_devices[storage_devices_len].read_gather = partition_read_gather;
+                storage_devices[storage_devices_len].write_scatter = partition_write_scatter;
 
                 u8 fs_id = 0;
                 VFS_fs_t *fs;

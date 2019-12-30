@@ -144,10 +144,10 @@ typedef struct {
     u16 state;
     u16 err_handling;
     u16 version_minor;
-    u16 consistency_check_time;
-    u16 consistency_check_interval;
-    u16 os_id;
-    u16 version_major;
+    u32 consistency_check_time;
+    u32 consistency_check_interval;
+    u32 os_id;
+    u32 version_major;
     u16 super_user_id;
     u16 super_group_id;
     EXT2_superblock_extended_t extended;

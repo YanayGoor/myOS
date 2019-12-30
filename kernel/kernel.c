@@ -103,16 +103,21 @@ void main() {
     u32 *buff2 = (u32 *)malloc(2048);
     storage_read(0, 0, 4, (u32)buff2);
 
-    EXT2_superblock_t *super = (EXT2_superblock_t *)(buff2 + 256);
-
-    print_uint(*buff);
-    print_uint((u32)super);
-
     VFS_mounted_fs_t *fs = get_mounted_file_system_at(0);
 
-    EXT2_inode_t *inode0 = EXT2_read_inode(0, _EXT2_read_superblock(0), 0);
-    EXT2_inode_t *inode1 = EXT2_read_inode(0, _EXT2_read_superblock(0), 1);
-    EXT2_inode_t *inode2 = EXT2_read_inode(0, _EXT2_read_superblock(0), 2);
+    VFS_inode_t *root_dir = fs->superblock->mounted;
+
+    kprint("\nroot dir inode for storage: (id) ");
+    print_uint(fs->storage_id);
+    kprint("    type: ");
+    print_uint(root_dir->type);
+    kprint("    permissions: ");
+    print_uint(root_dir->permissions);
+    kprint("    size: ");
+    print_uint(root_dir->size);
+
+    VFS_dentry_t *dentry0 = root_dir->readdir(root_dir, 0);
+    VFS_dentry_t *dentry1 = root_dir->readdir(root_dir, 1);
 
     while(1) {}
 
