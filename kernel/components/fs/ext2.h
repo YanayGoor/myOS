@@ -60,7 +60,7 @@ typedef struct {
         u8 name_lengthh;
         u8 type;
     } feature_specific;
-    u8 name[1];
+    u8 name;
 } EXT2_dir_entry_t;
 
 typedef struct {

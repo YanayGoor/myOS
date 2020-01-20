@@ -23,7 +23,7 @@ VFS_dentry_t *_EXT2_vfs_readdir(VFS_inode_t *inode, u32 index) {
     if (!ext2_super->version_major) name_length += ext2_dentry->feature_specific.name_lengthh;
 
     u8 *name = (u8 *)malloc(name_length);
-    memory_copy(ext2_dentry->name, name, name_length);
+    memory_copy(&ext2_dentry->name, name, name_length);
 
     vfs_dentry->name = name;
     vfs_dentry->parent = inode;
@@ -83,7 +83,8 @@ void init_ext2() {
  */
 EXT2_superblock_t *_EXT2_read_superblock(u8 device_id) {
     EXT2_superblock_t *buff = (EXT2_superblock_t *)malloc(1024);
-    storage_read(device_id, 2, 2, (u32)buff);
+    u8 result = storage_read(device_id, 2, 2, (u32)buff);
+    print_uint(result);
     return buff;
 }
 
@@ -179,8 +180,8 @@ storage_vector_node_t *_EXT2_transform_blocks_to_vectors(EXT2_superblock_t *supe
     for (i = 0; i < buffer_size; i++) {
         if (!storage_curr->node.prev) {
             // if list is empty
-            storage_curr->offset = buffer[i];
-            storage_curr->length = block_size;
+            storage_curr->offset = buffer[i] * (block_size / 512);
+            storage_curr->length = block_size / 512;
             storage_curr->node.prev = 0;
             storage_curr->node.next = 0;
         } else if (buffer[i] == buffer[i - 1] + 1) {
@@ -533,7 +534,7 @@ EXT2_dir_entry_t *EXT2_lookup(u8 device_id, EXT2_superblock_t *superblock, u32 i
         while (!name[query_length]) query_length++;
         
         for (i = 0; i < name_length; i++) {
-            if (curr->name[i] == name[i]) {
+            if (curr->name + i == name[i]) {
                 break;
             }
         }
@@ -563,10 +564,10 @@ EXT2_dir_entry_t *EXT2_readdir(u8 device_id, EXT2_superblock_t *superblock, u32 
         if (!superblock->version_major) name_length += curr->feature_specific.name_lengthh;
         if (i == index) {
             EXT2_dir_entry_t *result = (EXT2_dir_entry_t *)malloc(sizeof(EXT2_dir_entry_t) + name_length - 1);
-            memory_copy((char *)curr, (char *)result, sizeof(EXT2_dir_entry_t) + name_length - 1);
+            memory_copy((char *)curr, (char *)result, sizeof(EXT2_dir_entry_t) + name_length);
             free(inode);
             free(dir_entries);
-            return curr;
+            return result;
         }
         if(!curr->inode && !curr->name_lengthl && curr->feature_specific.type == EXT2_dir_type_unknown) return 0;
 
@@ -574,9 +575,6 @@ EXT2_dir_entry_t *EXT2_readdir(u8 device_id, EXT2_superblock_t *superblock, u32 
         i++;
     }
     return 0;
-}
-
-EXT2_inode_t *EXT2_create(u8 device_id, EXT2_superblock_t *superblock, u32 inode_i, char* name) {   
 }
 
 u32 _EXT2_alloc_inode_in_group(u8 device_id, EXT2_superblock_t *superblock, u32 group) {
