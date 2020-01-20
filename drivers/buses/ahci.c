@@ -35,12 +35,15 @@ AHCI_port_type_t get_port_type(AHCI_HBA_port_t *port) {
 
 void stop_cmd(AHCI_HBA_port_t *port) {
     port->cmd_n_status &= ~HBA_PxCMD_ST;
+    while(1) {
+        if (port->cmd_n_status & HBA_PxCMD_CR) {
+            continue;
+        }
+        break;
+    }
     port->cmd_n_status &= ~HBA_PxCMD_FRE;
     while(1) {
         if (port->cmd_n_status & HBA_PxCMD_FR) {
-            continue;
-        }
-        if (port->cmd_n_status & HBA_PxCMD_CR) {
             continue;
         }
         break;
@@ -48,8 +51,8 @@ void stop_cmd(AHCI_HBA_port_t *port) {
 }
 
 void start_cmd(AHCI_HBA_port_t *port) {
-    while (port->cmd_n_status & HBA_PxCMD_CR) {};
     port->cmd_n_status |= HBA_PxCMD_FRE;
+    while (port->cmd_n_status & HBA_PxCMD_CR) {};
     port->cmd_n_status |= HBA_PxCMD_ST;
 }
 
@@ -73,7 +76,7 @@ void init_port(AHCI_HBA_port_t *port) {
 
     kprint("initialized port at memory addr ");
     print_uint(port_addr);
-    start_cmd(port);
+    // start_cmd(port);
 }
 
 u8 find_free_slot(AHCI_HBA_port_t *port) {
@@ -119,6 +122,7 @@ void AHCI_fill_cmd(AHCI_cmd_header_t *cmd_header, u32 cmd, u32 start, u32 length
 }
 
 u8 AHCI_issue_cmd(AHCI_HBA_port_t *port, u32 slots) {
+    start_cmd(port);
     u32 spin = 0;
     while((port->task_file_data & ATA_DEV_BUSY || port->task_file_data & ATA_DEV_DRQ) && spin < 10000000) {
         spin++;
@@ -127,8 +131,8 @@ u8 AHCI_issue_cmd(AHCI_HBA_port_t *port, u32 slots) {
         kprint("ahci port is hung\n");
         return -1;
     }
-    port->sata_active = slots;
-    port->cmd_issue = slots;
+    // port->sata_active = slots;
+    port->cmd_issue |= slots;
     while(1) {
         if ((port->cmd_issue & slots) == 0) {
             break;
@@ -138,6 +142,7 @@ u8 AHCI_issue_cmd(AHCI_HBA_port_t *port, u32 slots) {
             return -1;
         }
     }
+    stop_cmd(port);
     return 0;
 }
 
@@ -150,12 +155,12 @@ u8 AHCI_issue_dma_scatter_gather_cmd(u32 cmd, AHCI_HBA_port_t *port, storage_vec
     u32 slots = 0;
     while (curr->node.next) {
         curr = curr->node.next;
-        buffer_offset += curr->length * 512;
         u8 free_slot = find_free_slot(port);
         if (free_slot == (u8)-1) return -1;
         AHCI_cmd_header_t *cmd_header = (AHCI_cmd_header_t *)port->cmd_list_base_addr.addr + free_slot;
         AHCI_fill_cmd(cmd_header, cmd, curr->offset, curr->length, buffer + buffer_offset);
         slots |= 1 << free_slot;
+        buffer_offset += curr->length * 512;
     }
     return AHCI_issue_cmd(port, slots);
 }

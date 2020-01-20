@@ -25,11 +25,21 @@ u8 partition_write(volatile void *info, u32 start, u32 length, u32 buffer) {
 
 u8 partition_read_gather(volatile void *info, storage_vector_node_t *nodes, u32 buffer) {
     u32 offset = PAR_INFO->entry.sector_offset;
+    storage_vector_node_t *curr = nodes;
+    while (curr) {
+        curr->offset += offset;
+        curr = (storage_vector_node_t *)curr->node.next;
+    }
     return PAR_INFO->device_driver_info->read_gather(PAR_INFO->device_driver_info->driver_info, nodes, buffer);
 }
 
 u8 partition_write_scatter(volatile void *info, storage_vector_node_t *nodes, u32 buffer) {
     u32 offset = PAR_INFO->entry.sector_offset;
+    storage_vector_node_t *curr = nodes;
+    while (curr) {
+        curr->offset += offset;
+        curr = (storage_vector_node_t *)curr->node.next;
+    }
     return PAR_INFO->device_driver_info->write_scatter(PAR_INFO->device_driver_info->driver_info, nodes, buffer);
 }
 
@@ -48,8 +58,8 @@ u8 storage_read_gather(u32 storage_index, storage_vector_node_t *nodes, u32 buff
 u8 storage_write_scatter(u32 storage_index, storage_vector_node_t *nodes, u32 buffer) {
     if (storage_index > storage_devices_len) return 0;
     storage_device_t device = storage_devices[storage_index];
-    if (!device.driver_info || !device.read_gather) return 0;
-    return device.read_gather(device.driver_info, nodes, buffer);
+    if (!device.driver_info || !device.write_scatter) return 0;
+    return device.write_scatter(device.driver_info, nodes, buffer);
 }
 u8 storage_write(u32 storage_index, u32 start, u32 length, u32 buffer) {
     if (storage_index > storage_devices_len) return 0;
